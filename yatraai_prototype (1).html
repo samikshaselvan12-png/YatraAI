@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YatraAI — Live Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Serif+Display&display=swap');
+
+  :root {
+    --midnight: #0A0F1E;
+    --navy: #111827;
+    --card: #1A2544;
+    --card2: #1E2D4F;
+    --teal: #00C2A8;
+    --teal-dim: #00896E;
+    --teal-glow: rgba(0,194,168,0.15);
+    --orange: #FF6B35;
+    --gold: #F5C842;
+    --red: #FF4D6A;
+    --purple: #7B5EA7;
+    --white: #FFFFFF;
+    --off: #E8EDF7;
+    --muted: #7A8FAD;
+    --muted2: #A8BCDA;
+    --r: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--midnight);
+    color: var(--off);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── TOP NAV ── */
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; height: 56px;
+    background: var(--navy);
+    border-bottom: 1px solid rgba(0,194,168,0.18);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-brand { display: flex; align-items: center; gap: 10px; }
+  .nav-logo {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--teal); display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: var(--midnight);
+    box-shadow: 0 0 16px rgba(0,194,168,0.45);
+  }
+  .nav-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--white); }
+  .nav-title span { color: var(--teal); }
+  .nav-badge {
+    font-size: 10px; background: rgba(0,194,168,0.15); color: var(--teal);
+    border: 1px solid rgba(0,194,168,0.3); border-radius: 20px;
+    padding: 2px 10px; font-weight: 600; letter-spacing: 0.04em;
+  }
+  .nav-right { display: flex; align-items: center; gap: 16px; }
+  .live-dot {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--teal); font-weight: 600;
+  }
+  .live-dot::before {
+    content: '';
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--teal);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+  .city-select {
+    background: var(--card); border: 1px solid rgba(255,255,255,0.1);
+    color: var(--off); font-family: inherit; font-size: 13px;
+    padding: 6px 12px; border-radius: 8px; cursor: pointer;
+  }
+
+  /* ── LAYOUT ── */
+  .shell {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: auto 1fr;
+    min-height: calc(100vh - 56px);
+  }
+
+  /* ── LEFT PANEL: Journey Planner ── */
+  .planner {
+    background: var(--navy);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 16px;
+    grid-row: 1 / 3;
+  }
+  .panel-title {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted);
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .input-group { display: flex; flex-direction: column; gap: 8px; }
+  .input-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card); border-radius: var(--r);
+    padding: 10px 14px;
+    border: 1px solid rgba(255,255,255,0.07);
+    transition: border-color 0.2s;
+  }
+  .input-row:focus-within { border-color: var(--teal); }
+  .input-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .input-dot.origin { background: var(--teal); }
+  .input-dot.dest { background: var(--orange); }
+  .input-row input {
+    background: none; border: none; outline: none;
+    color: var(--off); font-family: inherit; font-size: 14px; flex: 1;
+  }
+  .input-row input::placeholder { color: var(--muted); }
+
+  .prefs-row {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .pref-chip {
+    padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    border: 1px solid rgba(255,255,255,0.12); color: var(--muted2);
+    cursor: pointer; transition: all 0.2s;
+    background: none;
+  }
+  .pref-chip.active { background: rgba(0,194,168,0.15); border-color: var(--teal); color: var(--teal); }
+  .pref-chip:hover:not(.active) { border-color: rgba(255,255,255,0.25); color: var(--off); }
+
+  .search-btn {
+    width: 100%; padding: 12px;
+    background: var(--teal); color: var(--midnight);
+    border: none; border-radius: var(--r);
+    font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .search-btn:hover { background: #00d4b8; transform: translateY(-1px); }
+  .search-btn:active { transform: translateY(0); }
+
+  /* Route results */
+  .route-results { display: flex; flex-direction: column; gap: 10px; }
+  .route-card {
+    background: var(--card); border-radius: var(--r);
+    padding: 12px 14px;
+    border: 1px solid rgba(255,255,255,0.07);
+    cursor: pointer; transition: all 0.2s;
+    position: relative;
+  }
+  .route-card:hover { border-color: rgba(0,194,168,0.35); }
+  .route-card.best { border-color: var(--teal); }
+  .route-best-badge {
+    position: absolute; top: -1px; right: 12px;
+    background: var(--teal); color: var(--midnight);
+    font-size: 10px; font-weight: 700; padding: 2px 8px;
+    border-radius: 0 0 6px 6px; letter-spacing: 0.05em;
+  }
+  .route-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .route-time { font-size: 22px; font-family: 'DM Serif Display', serif; color: var(--white); }
+  .route-fare { font-size: 13px; color: var(--gold); font-weight: 600; }
+  .route-modes { display: flex; gap: 5px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+  .mode-tag {
+    font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600;
+  }
+  .mode-metro { background: rgba(0,194,168,0.15); color: var(--teal); }
+  .mode-bus { background: rgba(255,107,53,0.15); color: var(--orange); }
+  .mode-auto { background: rgba(245,200,66,0.15); color: var(--gold); }
+  .mode-rapido { background: rgba(123,94,167,0.15); color: var(--purple); }
+  .mode-cab { background: rgba(255,77,106,0.15); color: var(--red); }
+  .mode-walk { background: rgba(168,188,218,0.1); color: var(--muted2); }
+  .route-meta { display: flex; gap: 12px; font-size: 11px; color: var(--muted); }
+  .route-meta span { display: flex; align-items: center; gap: 4px; }
+  .safety-score {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; margin-top: 6px;
+  }
+  .safety-bar {
+    flex: 1; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;
+  }
+  .safety-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+  .safety-high .safety-fill { background: var(--teal); }
+  .safety-med .safety-fill { background: var(--gold); }
+  .safety-low .safety-fill { background: var(--red); }
+
+  /* ── RIGHT: Main content ── */
+  .main-top {
+    padding: 20px 24px 0;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  /* KPI Strip */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .kpi-card {
+    background: var(--card); border-radius: var(--r);
+    padding: 14px 16px;
+    border: 1px solid rgba(255,255,255,0.06);
+    position: relative; overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    border-radius: var(--r) var(--r) 0 0;
+  }
+  .kpi-teal::before { background: var(--teal); }
+  .kpi-orange::before { background: var(--orange); }
+  .kpi-gold::before { background: var(--gold); }
+  .kpi-purple::before { background: var(--purple); }
+  .kpi-label { font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 4px; }
+  .kpi-val { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--white); line-height: 1.1; }
+  .kpi-sub { font-size: 11px; color: var(--muted2); margin-top: 3px; }
+  .kpi-delta {
+    position: absolute; top: 14px; right: 14px;
+    font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 20px;
+  }
+  .delta-up { background: rgba(0,194,168,0.15); color: var(--teal); }
+  .delta-down { background: rgba(255,77,106,0.15); color: var(--red); }
+
+  /* ── Middle row ── */
+  .mid-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding: 0 24px;
+  }
+
+  /* Feed card */
+  .feed-card {
+    background: var(--card); border-radius: var(--r);
+    border: 1px solid rgba(255,255,255,0.06);
+    overflow: hidden;
+  }
+  .feed-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .feed-title { font-weight: 600; font-size: 13px; }
+  .feed-count {
+    font-size: 11px; background: rgba(0,194,168,0.12);
+    color: var(--teal); padding: 2px 9px; border-radius: 20px; font-weight: 600;
+  }
+  .feed-list { padding: 8px 0; max-height: 240px; overflow-y: auto; }
+  .feed-list::-webkit-scrollbar { width: 4px; }
+  .feed-list::-webkit-scrollbar-track { background: transparent; }
+  .feed-list::-webkit-scrollbar-thumb { background: var(--card2); border-radius: 2px; }
+
+  .feed-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 9px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+  }
+  .feed-item:hover { background: rgba(255,255,255,0.03); }
+  .feed-item:last-child { border-bottom: none; }
+  .feed-icon {
+    width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+  }
+  .feed-body { flex: 1; min-width: 0; }
+  .feed-name { font-weight: 600; font-size: 13px; color: var(--off); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .feed-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .feed-time { font-size: 11px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
+  }
+  .status-ok { background: var(--teal); }
+  .status-warn { background: var(--gold); }
+  .status-err { background: var(--red); }
+
+  /* Safety events */
+  .safety-event { padding: 8px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .safety-event:last-child { border-bottom: none; }
+  .sos-badge {
+    font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px;
+    flex-shrink: 0;
+  }
+  .sos-active { background: rgba(255,77,106,0.2); color: var(--red); border: 1px solid rgba(255,77,106,0.4); }
+  .sos-resolved { background: rgba(0,194,168,0.12); color: var(--teal); }
+  .sos-info { background: rgba(245,200,66,0.12); color: var(--gold); }
+
+  /* ── Bottom row ── */
+  .bot-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    padding: 0 24px 24px;
+  }
+
+  /* Delay timeline chart */
+  .chart-area { padding: 16px; }
+  .chart-label { font-size: 11px; color: var(--muted); margin-bottom: 12px; font-weight: 500; }
+  .bar-chart {
+    display: flex; align-items: flex-end; gap: 6px; height: 120px;
+  }
+  .bar-group { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+  .bar-wrap { width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 100px; }
+  .bar {
+    width: 45%; border-radius: 4px 4px 0 0;
+    transition: height 0.8s cubic-bezier(.4,0,.2,1);
+    cursor: pointer;
+  }
+  .bar:hover { opacity: 0.8; }
+  .bar-metro { background: var(--teal); }
+  .bar-bus { background: var(--orange); }
+  .bar-label { font-size: 10px; color: var(--muted); }
+  .chart-legend { display: flex; gap: 16px; margin-top: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted2); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  /* Mode share donut (CSS only) */
+  .mode-share { padding: 16px; }
+  .donut-wrap { display: flex; align-items: center; justify-content: center; margin: 12px 0; }
+  .donut {
+    width: 120px; height: 120px; border-radius: 50%;
+    background: conic-gradient(
+      var(--teal) 0% 32%,
+      var(--orange) 32% 55%,
+      var(--purple) 55% 70%,
+      var(--gold) 70% 82%,
+      var(--red) 82% 100%
+    );
+    position: relative;
+  }
+  .donut-hole {
+    position: absolute; top: 20px; left: 20px; right: 20px; bottom: 20px;
+    background: var(--card); border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .donut-center-val { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--white); }
+  .donut-center-lbl { font-size: 9px; color: var(--muted); }
+  .mode-list { display: flex; flex-direction: column; gap: 6px; }
+  .mode-row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+  .mode-name { display: flex; align-items: center; gap: 7px; color: var(--muted2); }
+  .mode-pip { width: 8px; height: 8px; border-radius: 2px; }
+  .mode-pct { font-weight: 600; color: var(--off); }
+
+  /* ── Ticker strip ── */
+  .ticker {
+    background: var(--navy);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 8px 24px;
+    display: flex; align-items: center; gap: 16px;
+    overflow: hidden;
+  }
+  .ticker-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+    color: var(--teal); white-space: nowrap; flex-shrink: 0;
+  }
+  .ticker-scroll { display: flex; gap: 32px; animation: scroll 30s linear infinite; }
+  @keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .ticker-item { font-size: 12px; color: var(--muted2); white-space: nowrap; display: flex; gap: 6px; }
+  .ticker-item .t-name { color: var(--off); font-weight: 500; }
+  .ticker-item .t-ok { color: var(--teal); }
+  .ticker-item .t-warn { color: var(--gold); }
+  .ticker-item .t-err { color: var(--red); }
+
+  /* ── Journey Planner Modal State ── */
+  .route-loading { display: flex; align-items: center; gap: 10px; padding: 16px; color: var(--muted); }
+  .spinner {
+    width: 18px; height: 18px; border: 2px solid rgba(0,194,168,0.2);
+    border-top-color: var(--teal); border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Misc */
+  .tag-new {
+    font-size: 10px; background: rgba(255,107,53,0.15); color: var(--orange);
+    border-radius: 20px; padding: 1px 7px; font-weight: 600; vertical-align: middle;
+  }
+  .section-gap { height: 16px; }
+
+  /* Tooltip */
+  [data-tip] { position: relative; cursor: default; }
+  [data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: #2a3a5e; color: var(--off); font-size: 11px; padding: 4px 10px;
+    border-radius: 6px; white-space: nowrap; z-index: 200;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">
+    <div class="nav-logo">Y</div>
+    <span class="nav-title">Yatra<span>AI</span></span>
+    <span class="nav-badge">LIVE DASHBOARD</span>
+  </div>
+  <div class="nav-right">
+    <div class="live-dot">Live Feed</div>
+    <select class="city-select" onchange="changeCity(this.value)">
+      <option value="Chennai">Chennai</option>
+      <option value="Bangalore">Bangalore</option>
+      <option value="Mumbai">Mumbai</option>
+      <option value="Delhi">Delhi</option>
+    </select>
+  </div>
+</nav>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-label">⚡ LIVE</div>
+  <div class="ticker-scroll" id="ticker">
+    <span class="ticker-item"><span class="t-name">Blue Line Metro</span> <span class="t-ok">On Time</span></span>
+    <span class="ticker-item"><span class="t-name">MTC Route 21C</span> <span class="t-warn">+8 min delay</span></span>
+    <span class="ticker-item"><span class="t-name">Green Line Metro</span> <span class="t-ok">On Time</span></span>
+    <span class="ticker-item"><span class="t-name">KSRTC Volvo</span> <span class="t-err">Cancelled</span></span>
+    <span class="ticker-item"><span class="t-name">Rapido Zones</span> <span class="t-ok">Surge: Normal</span></span>
+    <span class="ticker-item"><span class="t-name">MTC Route 47</span> <span class="t-ok">On Time</span></span>
+    <span class="ticker-item"><span class="t-name">Yellow Line Metro</span> <span class="t-warn">+4 min delay</span></span>
+    <span class="ticker-item"><span class="t-name">Ola Micro</span> <span class="t-warn">Surge 1.4×</span></span>
+    <!-- duplicate for seamless loop -->
+    <span class="ticker-item"><span class="t-name">Blue Line Metro</span> <span class="t-ok">On Time</span></span>
+    <span class="ticker-item"><span class="t-name">MTC Route 21C</span> <span class="t-warn">+8 min delay</span></span>
+    <span class="ticker-item"><span class="t-name">Green Line Metro</span> <span class="t-ok">On Time</span></span>
+    <span class="ticker-item"><span class="t-name">KSRTC Volvo</span> <span class="t-err">Cancelled</span></span>
+    <span class="ticker-item"><span class="t-name">Rapido Zones</span> <span class="t-ok">Surge: Normal</span></span>
+    <span class="ticker-item"><span class="t-name">MTC Route 47</span> <span class="t-ok">On Time</span></span>
+    <span class="ticker-item"><span class="t-name">Yellow Line Metro</span> <span class="t-warn">+4 min delay</span></span>
+    <span class="ticker-item"><span class="t-name">Ola Micro</span> <span class="t-warn">Surge 1.4×</span></span>
+  </div>
+</div>
+
+<!-- SHELL -->
+<div class="shell">
+
+  <!-- LEFT: JOURNEY PLANNER -->
+  <aside class="planner">
+    <div class="panel-title">Journey Planner</div>
+
+    <div class="input-group">
+      <div class="input-row">
+        <div class="input-dot origin"></div>
+        <input type="text" id="origin-input" placeholder="From: T. Nagar Metro" value="T. Nagar Metro">
+      </div>
+      <div class="input-row">
+        <div class="input-dot dest"></div>
+        <input type="text" id="dest-input" placeholder="To: Whitefield, Bangalore" value="Chennai Central">
+      </div>
+    </div>
+
+    <div class="prefs-row">
+      <button class="pref-chip active" onclick="togglePref(this)">⚡ Fastest</button>
+      <button class="pref-chip" onclick="togglePref(this)">💰 Cheapest</button>
+      <button class="pref-chip" onclick="togglePref(this)">🌿 Eco</button>
+      <button class="pref-chip active" onclick="togglePref(this)">🛡️ Safe route</button>
+      <button class="pref-chip" onclick="togglePref(this)">♿ Accessible</button>
+    </div>
+
+    <button class="search-btn" onclick="searchRoutes()">Find Routes →</button>
+
+    <div id="route-results">
+      <!-- populated by JS -->
+    </div>
+  </aside>
+
+  <!-- RIGHT: DASHBOARD -->
+  <div style="display:flex;flex-direction:column;gap:0;overflow-y:auto;">
+
+    <!-- KPI STRIP -->
+    <div class="main-top">
+      <div class="kpi-strip">
+        <div class="kpi-card kpi-teal">
+          <div class="kpi-delta delta-up">↑ 12%</div>
+          <div class="kpi-label">Active Journeys</div>
+          <div class="kpi-val" id="kpi-journeys">—</div>
+          <div class="kpi-sub">across Chennai</div>
+        </div>
+        <div class="kpi-card kpi-orange">
+          <div class="kpi-delta delta-down">↓ 3</div>
+          <div class="kpi-label">Disruptions Now</div>
+          <div class="kpi-val" id="kpi-disruptions">—</div>
+          <div class="kpi-sub">2 metro · 1 bus</div>
+        </div>
+        <div class="kpi-card kpi-gold">
+          <div class="kpi-delta delta-up">↑ 0.3s</div>
+          <div class="kpi-label">Avg Reroute Time</div>
+          <div class="kpi-val" id="kpi-reroute">—</div>
+          <div class="kpi-sub">AI engine latency</div>
+        </div>
+        <div class="kpi-card kpi-purple">
+          <div class="kpi-delta delta-up">All clear</div>
+          <div class="kpi-label">SOS Alerts Today</div>
+          <div class="kpi-val" id="kpi-sos">—</div>
+          <div class="kpi-sub">2 resolved · 0 active</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MID ROW -->
+    <div class="mid-row" style="margin-top:16px;">
+
+      <!-- Live Transport Feed -->
+      <div class="feed-card">
+        <div class="feed-header">
+          <span class="feed-title">Live Transport Feed</span>
+          <span class="feed-count" id="feed-count">8 sources</span>
+        </div>
+        <div class="feed-list" id="transport-feed">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+      <!-- Safety Events -->
+      <div class="feed-card">
+        <div class="feed-header">
+          <span class="feed-title">Safety Layer Activity</span>
+          <span class="feed-count" style="background:rgba(255,77,106,0.1);color:var(--red);" id="safety-count">2 events</span>
+        </div>
+        <div class="feed-list" id="safety-feed">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM ROW -->
+    <div class="bot-row" style="margin-top:16px;">
+
+      <!-- Delay Chart -->
+      <div class="feed-card">
+        <div class="feed-header">
+          <span class="feed-title">Delay Prediction — Next 6 Hours</span>
+          <span class="feed-count">XGBoost model</span>
+        </div>
+        <div class="chart-area">
+          <div class="chart-label">Avg delay (minutes) by hour · Metro vs Bus</div>
+          <div class="bar-chart" id="bar-chart">
+            <!-- populated by JS -->
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--teal)"></div> Metro</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div> City Bus</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode Share -->
+      <div class="feed-card">
+        <div class="feed-header">
+          <span class="feed-title">Mode Share</span>
+          <span class="feed-count">Today</span>
+        </div>
+        <div class="mode-share">
+          <div class="donut-wrap">
+            <div class="donut">
+              <div class="donut-hole">
+                <span class="donut-center-val">14.2K</span>
+                <span class="donut-center-lbl">journeys</span>
+              </div>
+            </div>
+          </div>
+          <div class="mode-list">
+            <div class="mode-row"><span class="mode-name"><span class="mode-pip" style="background:var(--teal)"></span> Metro + Train</span><span class="mode-pct">32%</span></div>
+            <div class="mode-row"><span class="mode-name"><span class="mode-pip" style="background:var(--orange)"></span> City Bus</span><span class="mode-pct">23%</span></div>
+            <div class="mode-row"><span class="mode-name"><span class="mode-pip" style="background:var(--purple)"></span> Rapido / Bike</span><span class="mode-pct">15%</span></div>
+            <div class="mode-row"><span class="mode-name"><span class="mode-pip" style="background:var(--gold)"></span> Auto</span><span class="mode-pct">12%</span></div>
+            <div class="mode-row"><span class="mode-name"><span class="mode-pip" style="background:var(--red)"></span> Cab (Ola/Uber)</span><span class="mode-pct">18%</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────
+const CITIES = {
+  Chennai:   { journeys: 14280, disruptions: 3, reroute: '1.8s', sos: 2 },
+  Bangalore: { journeys: 21450, disruptions: 5, reroute: '1.5s', sos: 4 },
+  Mumbai:    { journeys: 38700, disruptions: 7, reroute: '2.1s', sos: 6 },
+  Delhi:     { journeys: 44200, disruptions: 9, reroute: '1.9s', sos: 3 },
+};
+
+const TRANSPORT_FEEDS = {
+  Chennai: [
+    { icon:'🚇', name:'Blue Line Metro',   desc:'T. Nagar → Central — On Time',       status:'ok',   time:'Just now' },
+    { icon:'🚌', name:'MTC Route 21C',     desc:'Tambaram → Adyar — +8 min delay',    status:'warn', time:'1m ago'   },
+    { icon:'🚇', name:'Green Line Metro',  desc:'Airport → Guindy — On Time',         status:'ok',   time:'2m ago'   },
+    { icon:'🛵', name:'Rapido Bike Taxi',  desc:'Surge: Normal across Chennai',        status:'ok',   time:'2m ago'   },
+    { icon:'🚌', name:'MTC Route 47',      desc:'Anna Nagar → Mylapore — On Time',    status:'ok',   time:'4m ago'   },
+    { icon:'🚕', name:'Ola Micro',         desc:'Surge 1.4× — Peak zone: T. Nagar',  status:'warn', time:'5m ago'   },
+  ],
+  Bangalore: [
+    { icon:'🚇', name:'Purple Line Metro', desc:'Baiyappanahalli → Mysuru Rd — On Time', status:'ok',   time:'Just now' },
+    { icon:'🚌', name:'BMTC Route 335E',   desc:'Whitefield → MG Road — +12 min',    status:'warn', time:'1m ago'   },
+    { icon:'🚇', name:'Green Line Metro',  desc:'Nagasandra → Silk Board — On Time',  status:'ok',   time:'3m ago'   },
+    { icon:'🚕', name:'Uber Auto',         desc:'Surge 1.6× — KR Puram zone',        status:'warn', time:'4m ago'   },
+    { icon:'🛵', name:'Rapido',            desc:'Peak demand: Whitefield hub',        status:'ok',   time:'5m ago'   },
+    { icon:'🚌', name:'KSRTC Airavata',    desc:'MAJESTIC → Electronic City — Cancelled', status:'err', time:'6m ago' },
+  ],
+  Mumbai: [
+    { icon:'🚇', name:'Western Line Local', desc:'Churchgate → Virar — On Time',    status:'ok',   time:'Just now' },
+    { icon:'🚇', name:'Central Line Local', desc:'CST → Kalyan — +5 min delay',    status:'warn', time:'2m ago'   },
+    { icon:'🚌', name:'BEST Route 1',      desc:'Colaba → Andheri — On Time',      status:'ok',   time:'3m ago'   },
+    { icon:'🚕', name:'Ola Prime',         desc:'Surge 1.9× — BKC zone',          status:'warn', time:'4m ago'   },
+    { icon:'🚇', name:'Metro Line 2A',     desc:'Dahisar → DN Nagar — On Time',   status:'ok',   time:'5m ago'   },
+    { icon:'🛵', name:'Rapido',            desc:'Surge: Normal across Mumbai',    status:'ok',   time:'6m ago'   },
+  ],
+  Delhi: [
+    { icon:'🚇', name:'Yellow Line Metro', desc:'Samaypur Badli → HUDA — On Time', status:'ok',   time:'Just now' },
+    { icon:'🚇', name:'Blue Line Metro',   desc:'Dwarka → Noida — +6 min delay',  status:'warn', time:'1m ago'   },
+    { icon:'🚌', name:'DTC Route 522',     desc:'Nehru Place → ITO — On Time',    status:'ok',   time:'2m ago'   },
+    { icon:'🚕', name:'Ola Micro',         desc:'Surge 1.7× — Connaught Place',  status:'warn', time:'4m ago'   },
+    { icon:'🚇', name:'Pink Line Metro',   desc:'Majlis Park → Shiv Vihar — On Time', status:'ok', time:'5m ago'  },
+    { icon:'🛵', name:'Rapido',            desc:'Peak demand: Lajpat Nagar hub', status:'ok',   time:'6m ago'   },
+  ]
+};
+
+const SAFETY_EVENTS = [
+  { type:'resolved', msg:'SOS resolved — Meenakshi S., Anna Nagar',       sub:'Location shared with contacts + police', time:'14m ago' },
+  { type:'info',     msg:'Safe route alert — MTC Route 32 (post 9 PM)',    sub:'Low lighting reported near Koyambedu',   time:'32m ago' },
+  { type:'info',     msg:'Ride verification — Driver QR scanned × 42',    sub:'All checks passed this hour',            time:'1h ago'  },
+  { type:'resolved', msg:'SOS resolved — Priya R., T. Nagar',              sub:'Emergency contacts notified in 8s',     time:'2h ago'  },
+  { type:'info',     msg:'Women-only carpool match × 6',                   sub:'Ambattur → Guindy route, 7:45 AM',      time:'3h ago'  },
+];
+
+const DELAY_DATA = {
+  hours: ['6 AM','7 AM','8 AM','9 AM','10 AM','11 AM'],
+  metro: [0.5, 1.2, 2.8, 3.5, 1.8, 0.9],
+  bus:   [1.2, 3.5, 8.2, 9.1, 5.4, 2.1],
+};
+
+const ROUTE_OPTIONS = [
+  {
+    time: '28 min', fare: '₹32', co2: '0.3 kg', walks: '~400m walk',
+    modes: ['metro','walk','auto'], best: true,
+    safetyPct: 92, safetyClass: 'safety-high', safetyLabel: 'Safety score: 92',
+    from: 'T. Nagar Metro → Greams Rd → Chennai Central'
+  },
+  {
+    time: '41 min', fare: '₹18', co2: '0.9 kg', walks: '~200m walk',
+    modes: ['bus','walk'], best: false,
+    safetyPct: 68, safetyClass: 'safety-med', safetyLabel: 'Safety score: 68',
+    from: 'MTC 21C → Egmore stop → Central'
+  },
+  {
+    time: '22 min', fare: '₹145', co2: '1.4 kg', walks: 'Door-to-door',
+    modes: ['cab'], best: false,
+    safetyPct: 85, safetyClass: 'safety-high', safetyLabel: 'Safety score: 85',
+    from: 'Ola Micro — direct · Surge: 1.0×'
+  },
+];
+
+// ── RENDER ────────────────────────────────────────────
+let currentCity = 'Chennai';
+
+function changeCity(city) {
+  currentCity = city;
+  renderKPIs(); renderFeed(); renderRoutes();
+}
+
+function renderKPIs() {
+  const d = CITIES[currentCity];
+  animateNum('kpi-journeys',   d.journeys.toLocaleString(), 0);
+  animateNum('kpi-disruptions', d.disruptions, 0);
+  document.getElementById('kpi-reroute').textContent = d.reroute;
+  animateNum('kpi-sos', d.sos, 0);
+}
+
+function animateNum(id, target, from) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  // for string targets just set directly
+  if (typeof target === 'string') { el.textContent = target; return; }
+  const diff = target - from; const steps = 24;
+  let i = 0;
+  const timer = setInterval(() => {
+    i++;
+    el.textContent = Math.round(from + (diff * i / steps)).toLocaleString();
+    if (i >= steps) clearInterval(timer);
+  }, 30);
+}
+
+function renderFeed() {
+  const feed = TRANSPORT_FEEDS[currentCity] || TRANSPORT_FEEDS.Chennai;
+  const icons = { ok: '🟢', warn: '🟡', err: '🔴' };
+  const bg = { ok: 'rgba(0,194,168,0.12)', warn: 'rgba(245,200,66,0.12)', err: 'rgba(255,77,106,0.12)' };
+
+  document.getElementById('transport-feed').innerHTML = feed.map(f => `
+    <div class="feed-item">
+      <div class="feed-icon" style="background:${bg[f.status]}">${f.icon}</div>
+      <div class="feed-body">
+        <div class="feed-name">${f.name}</div>
+        <div class="feed-desc">${f.desc}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <div class="feed-time">${f.time}</div>
+        <div class="status-dot status-${f.status}"></div>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('safety-feed').innerHTML = SAFETY_EVENTS.map(e => `
+    <div class="safety-event">
+      <span class="sos-badge ${e.type === 'resolved' ? 'sos-resolved' : 'sos-info'}">
+        ${e.type === 'resolved' ? '✓ Resolved' : 'ℹ Info'}
+      </span>
+      <div style="flex:1">
+        <div style="font-size:12px;color:var(--off);font-weight:500">${e.msg}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${e.sub}</div>
+      </div>
+      <div class="feed-time">${e.time}</div>
+    </div>
+  `).join('');
+}
+
+function renderBarChart() {
+  const maxVal = Math.max(...DELAY_DATA.bus);
+  const container = document.getElementById('bar-chart');
+  container.innerHTML = DELAY_DATA.hours.map((h, i) => {
+    const mH = (DELAY_DATA.metro[i] / maxVal * 100).toFixed(1);
+    const bH = (DELAY_DATA.bus[i]   / maxVal * 100).toFixed(1);
+    return `
+      <div class="bar-group">
+        <div class="bar-wrap">
+          <div class="bar bar-metro" style="height:${mH}%" data-tip="Metro: ${DELAY_DATA.metro[i]}m delay"></div>
+          <div class="bar bar-bus"   style="height:${bH}%" data-tip="Bus: ${DELAY_DATA.bus[i]}m delay"></div>
+        </div>
+        <div class="bar-label">${h}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderRoutes() {
+  const modeLabels = { metro:'Metro', bus:'Bus', auto:'Auto', rapido:'Rapido', cab:'Cab', walk:'Walk' };
+  document.getElementById('route-results').innerHTML = `
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px;margin-bottom:8px;">
+      3 routes found
+    </div>
+    ${ROUTE_OPTIONS.map(r => `
+      <div class="route-card ${r.best ? 'best' : ''}" onclick="selectRoute(this)">
+        ${r.best ? '<div class="route-best-badge">BEST MATCH</div>' : ''}
+        <div class="route-header">
+          <div class="route-time">${r.time}</div>
+          <div style="text-align:right">
+            <div class="route-fare">${r.fare}</div>
+            <div style="font-size:10px;color:var(--muted)">${r.co2} CO₂</div>
+          </div>
+        </div>
+        <div class="route-modes">
+          ${r.modes.map(m => `<span class="mode-tag mode-${m}">${modeLabels[m]}</span>`).join('')}
+        </div>
+        <div class="route-meta">
+          <span>🚶 ${r.walks}</span>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:5px;">${r.from}</div>
+        <div class="safety-score ${r.safetyClass}">
+          <span style="font-size:10px;color:var(--muted)">Safety</span>
+          <div class="safety-bar"><div class="safety-fill" style="width:${r.safetyPct}%"></div></div>
+          <span style="font-size:10px;color:var(--muted2)">${r.safetyPct}</span>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function selectRoute(el) {
+  document.querySelectorAll('.route-card').forEach(c => c.style.boxShadow = '');
+  el.style.boxShadow = '0 0 0 2px var(--teal)';
+}
+
+function togglePref(btn) {
+  btn.classList.toggle('active');
+}
+
+function searchRoutes() {
+  const btn = document.querySelector('.search-btn');
+  btn.textContent = 'Searching...';
+  btn.style.background = 'var(--teal-dim)';
+  document.getElementById('route-results').innerHTML = `
+    <div class="route-loading">
+      <div class="spinner"></div>
+      <span>AI routing across 5 modes…</span>
+    </div>
+  `;
+  setTimeout(() => {
+    btn.textContent = 'Find Routes →';
+    btn.style.background = '';
+    renderRoutes();
+  }, 1400);
+}
+
+// Live counter updates
+function liveUpdates() {
+  const d = CITIES[currentCity];
+  const drift = Math.floor(Math.random() * 40) - 20;
+  CITIES[currentCity].journeys = Math.max(100, d.journeys + drift);
+  document.getElementById('kpi-journeys').textContent = CITIES[currentCity].journeys.toLocaleString();
+}
+
+// Init
+renderKPIs();
+renderFeed();
+renderBarChart();
+renderRoutes();
+setInterval(liveUpdates, 3000);
+</script>
+</body>
+</html>
